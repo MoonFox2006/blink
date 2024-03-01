@@ -1,0 +1,1 @@
+idf_component_register(SRCS "blink.c" "main.c" INCLUDE_DIRS ".")

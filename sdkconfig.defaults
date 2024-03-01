@@ -1,0 +1,11 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF)  Project Minimal Configuration
+#
+CONFIG_IDF_TARGET="esp32c2"
+CONFIG_BOOTLOADER_LOG_LEVEL_ERROR=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_HEADER_FLASHSIZE_UPDATE=y
+CONFIG_XTAL_FREQ_26=y
+CONFIG_ESP_PHY_REDUCE_TX_POWER=y
+CONFIG_LOG_DEFAULT_LEVEL_ERROR=y
