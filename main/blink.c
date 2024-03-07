@@ -51,6 +51,37 @@ static IRAM_ATTR void blink_isr(void *arg) {
             }
             SET_PERI_REG_MASK(LEDC_LSCH0_CONF0_REG + 0x10 * i, (1 << LEDC_PARA_UP_LSCH0_S));
         }
+#elif defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
+        if ((blinks[i].mode > BLINK_TOGGLE) && (st & (1 << (LEDC_DUTY_CHNG_END_LSCH0_INT_ST_S + i)))) {
+            if (READ_PERI_REG(LEDC_LSCH0_DUTY_R_REG + 0x14 * i)) {
+                if (blinks[i].mode != BLINK_FADEIN)
+                    WRITE_PERI_REG(LEDC_LSCH0_DUTY_REG + 0x14 * i, blinks[i].bright << 4);
+                else
+                    WRITE_PERI_REG(LEDC_LSCH0_DUTY_REG + 0x14 * i, 0 << 4);
+                if (blinks[i].mode < BLINK_FADEIN)
+                    WRITE_PERI_REG(LEDC_LSCH0_CONF1_REG + 0x14 * i, (1 << LEDC_DUTY_START_LSCH0_S) | (0 << LEDC_DUTY_INC_LSCH0_S) | (1 << LEDC_DUTY_NUM_LSCH0_S) | ((BLINK_TIME - 1) << LEDC_DUTY_CYCLE_LSCH0_S) | (blinks[i].bright << LEDC_DUTY_SCALE_LSCH0_S));
+                else {
+                    if (blinks[i].mode == BLINK_FADEIN)
+                        WRITE_PERI_REG(LEDC_LSCH0_CONF1_REG + 0x14 * i, (1 << LEDC_DUTY_START_LSCH0_S) | (1 << LEDC_DUTY_INC_LSCH0_S) | (blinks[i].bright << LEDC_DUTY_NUM_LSCH0_S) | (8 << LEDC_DUTY_CYCLE_LSCH0_S) | (1 << LEDC_DUTY_SCALE_LSCH0_S));
+                    else // _blink == BLINK_BREATH
+                        WRITE_PERI_REG(LEDC_LSCH0_CONF1_REG + 0x14 * i, (1 << LEDC_DUTY_START_LSCH0_S) | (0 << LEDC_DUTY_INC_LSCH0_S) | (blinks[i].bright << LEDC_DUTY_NUM_LSCH0_S) | (8 << LEDC_DUTY_CYCLE_LSCH0_S) | (1 << LEDC_DUTY_SCALE_LSCH0_S));
+                }
+            } else {
+                if (blinks[i].mode != BLINK_FADEOUT)
+                    WRITE_PERI_REG(LEDC_LSCH0_DUTY_REG + 0x14 * i, 0 << 4);
+                else
+                    WRITE_PERI_REG(LEDC_LSCH0_DUTY_REG + 0x14 * i, blinks[i].bright << 4);
+                if (blinks[i].mode < BLINK_FADEIN)
+                    WRITE_PERI_REG(LEDC_LSCH0_CONF1_REG + 0x14 * i, (1 << LEDC_DUTY_START_LSCH0_S) | (1 << LEDC_DUTY_INC_LSCH0_S) | (1 << LEDC_DUTY_NUM_LSCH0_S) | (((250 << (blinks[i].mode - BLINK_4HZ)) - BLINK_TIME - 1) << LEDC_DUTY_CYCLE_LSCH0_S) | (blinks[i].bright << LEDC_DUTY_SCALE_LSCH0_S));
+                else {
+                    if (blinks[i].mode == BLINK_FADEOUT)
+                        WRITE_PERI_REG(LEDC_LSCH0_CONF1_REG + 0x14 * i, (1 << LEDC_DUTY_START_LSCH0_S) | (0 << LEDC_DUTY_INC_LSCH0_S) | (blinks[i].bright << LEDC_DUTY_NUM_LSCH0_S) | (8 << LEDC_DUTY_CYCLE_LSCH0_S) | (1 << LEDC_DUTY_SCALE_LSCH0_S));
+                    else // _blink == BLINK_BREATH
+                        WRITE_PERI_REG(LEDC_LSCH0_CONF1_REG + 0x14 * i, (1 << LEDC_DUTY_START_LSCH0_S) | (1 << LEDC_DUTY_INC_LSCH0_S) | (blinks[i].bright << LEDC_DUTY_NUM_LSCH0_S) | (8 << LEDC_DUTY_CYCLE_LSCH0_S) | (1 << LEDC_DUTY_SCALE_LSCH0_S));
+                }
+            }
+            SET_PERI_REG_MASK(LEDC_LSCH0_CONF0_REG + 0x14 * i, (1 << LEDC_PARA_UP_LSCH0_S));
+        }
 #else
         if ((blinks[i].mode > BLINK_TOGGLE) && (st & (1 << (LEDC_DUTY_CHNG_END_CH0_INT_ST_S + i)))) {
             if (READ_PERI_REG(LEDC_CH0_DUTY_R_REG + 0x14 * i)) {
@@ -99,7 +130,7 @@ esp_err_t blink_init() {
             .timer_num = BLINK_TIMER,
             .freq_hz = 1000,
             .clk_cfg = LEDC_AUTO_CLK,
-            .deconfigure = false
+//            .deconfigure = false
         };
 
         result = ledc_timer_config(&timer_cfg);
@@ -149,7 +180,7 @@ esp_err_t blink_update(uint8_t index, blink_t mode, uint16_t bright) {
     if ((index < LEDC_CHANNEL_MAX) && (blinks[index].mode != BLINK_UNDEFINED) && (mode > BLINK_UNDEFINED) && (mode <= BLINK_BREATH)) {
         if ((blinks[index].mode != mode) || (mode == BLINK_TOGGLE)) {
             if (mode <= BLINK_TOGGLE) {
-#if defined(CONFIG_IDF_TARGET_ESP32)
+#if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
                 CLEAR_PERI_REG_MASK(LEDC_INT_ENA_REG, 1 << (LEDC_DUTY_CHNG_END_LSCH0_INT_ENA_S + index));
 #else
                 CLEAR_PERI_REG_MASK(LEDC_INT_ENA_REG, 1 << (LEDC_DUTY_CHNG_END_CH0_INT_ENA_S + index));
@@ -167,7 +198,7 @@ esp_err_t blink_update(uint8_t index, blink_t mode, uint16_t bright) {
                     result = ledc_set_fade(BLINK_SPEED, LEDC_CHANNEL_0 + index, bright, LEDC_DUTY_DIR_DECREASE, bright, 8, 1);
                 else // (_blink == BLINK_FADEIN) || (_blink == BLINK_BREATH)
                     result = ledc_set_fade(BLINK_SPEED, LEDC_CHANNEL_0 + index, 0, LEDC_DUTY_DIR_INCREASE, bright, 8, 1);
-#if defined(CONFIG_IDF_TARGET_ESP32)
+#if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
                 SET_PERI_REG_MASK(LEDC_INT_ENA_REG, 1 << (LEDC_DUTY_CHNG_END_LSCH0_INT_ENA_S + index));
 #else
                 SET_PERI_REG_MASK(LEDC_INT_ENA_REG, 1 << (LEDC_DUTY_CHNG_END_CH0_INT_ENA_S + index));
