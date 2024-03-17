@@ -51,7 +51,7 @@ static IRAM_ATTR void blink_isr(void *arg) {
             }
             SET_PERI_REG_MASK(LEDC_LSCH0_CONF0_REG + 0x10 * i, (1 << LEDC_PARA_UP_LSCH0_S));
         }
-#elif defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
+#elif defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3)
         if ((blinks[i].mode > BLINK_TOGGLE) && (st & (1 << (LEDC_DUTY_CHNG_END_LSCH0_INT_ST_S + i)))) {
             if (READ_PERI_REG(LEDC_LSCH0_DUTY_R_REG + 0x14 * i)) {
                 if (blinks[i].mode != BLINK_FADEIN)
@@ -180,7 +180,7 @@ esp_err_t blink_update(uint8_t index, blink_t mode, uint16_t bright) {
     if ((index < LEDC_CHANNEL_MAX) && (blinks[index].mode != BLINK_UNDEFINED) && (mode > BLINK_UNDEFINED) && (mode <= BLINK_BREATH)) {
         if ((blinks[index].mode != mode) || (mode == BLINK_TOGGLE)) {
             if (mode <= BLINK_TOGGLE) {
-#if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
+#if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3)
                 CLEAR_PERI_REG_MASK(LEDC_INT_ENA_REG, 1 << (LEDC_DUTY_CHNG_END_LSCH0_INT_ENA_S + index));
 #else
                 CLEAR_PERI_REG_MASK(LEDC_INT_ENA_REG, 1 << (LEDC_DUTY_CHNG_END_CH0_INT_ENA_S + index));
@@ -198,7 +198,7 @@ esp_err_t blink_update(uint8_t index, blink_t mode, uint16_t bright) {
                     result = ledc_set_fade(BLINK_SPEED, LEDC_CHANNEL_0 + index, bright, LEDC_DUTY_DIR_DECREASE, bright, 8, 1);
                 else // (_blink == BLINK_FADEIN) || (_blink == BLINK_BREATH)
                     result = ledc_set_fade(BLINK_SPEED, LEDC_CHANNEL_0 + index, 0, LEDC_DUTY_DIR_INCREASE, bright, 8, 1);
-#if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
+#if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3)
                 SET_PERI_REG_MASK(LEDC_INT_ENA_REG, 1 << (LEDC_DUTY_CHNG_END_LSCH0_INT_ENA_S + index));
 #else
                 SET_PERI_REG_MASK(LEDC_INT_ENA_REG, 1 << (LEDC_DUTY_CHNG_END_CH0_INT_ENA_S + index));
